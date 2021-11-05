@@ -3,7 +3,7 @@ import face_recognition
 import pandas as pd
 import os
 import numpy as np
-import time
+# import time
 
 def check_savefile(savefile):
     if not os.path.isfile(savefile):

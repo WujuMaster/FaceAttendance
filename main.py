@@ -1,7 +1,3 @@
-# import cv2
-# import numpy as np
-# import face_recognition
-# import pandas as pd
 import os
 from functions import cam_capture
 # from functions import verify_face
