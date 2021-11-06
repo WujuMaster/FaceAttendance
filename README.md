@@ -27,5 +27,5 @@ Bước 4: Chạy file main.py:
 
 python main.py
 
-Terminal sẽ in ra menu lựa chọn, lựa chọn 1 là lưu 1 khuôn mặt mới vào database (ảnh .jpg), lựa chọn 2 là nhận diện bằng camera, nếu có data trong database sẽ hiện tên người dùng, nếu không sẽ hiện "unknown", lựa chọn 3 là thoát chương trình.
+Terminal sẽ in ra menu lựa chọn, lựa chọn 1 là lưu 1 khuôn mặt mới vào database bằng cách nhập tên ảnh (đuôi .jpg) - lưu trong folder Pictures, không cần nhập đuôi; lựa chọn 2 là nhận diện bằng camera, nếu có data trong database sẽ hiện tên người dùng, nếu không sẽ hiện "unknown"; lựa chọn 3 là thoát chương trình.
 
