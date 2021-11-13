@@ -3,7 +3,7 @@ import face_recognition
 import pandas as pd
 import os
 import numpy as np
-# import time
+import time
 
 def check_savefile(savefile):
     if not os.path.isfile(savefile):
@@ -69,10 +69,11 @@ def verify_face(picpath, savefile):
 
 def cam_capture(savefile):
     vid = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    # pTime = 0
+    pTime = 0
     while True:
         _ , frame = vid.read()
-        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        small_frame = cv2.resize(frame, (0, 0), fx=0.33, fy=0.33)
+        # print(frame.shape)
         rgb_small_frame = small_frame[:, :, ::-1]
         try:
             name, locations = verify_face(rgb_small_frame, savefile)
@@ -87,18 +88,19 @@ def cam_capture(savefile):
         #start_point is top left, end_point is below right
         if len(locations) > 0:
             # cv2.rectangle(frame, (locations[3], locations[0]), (locations[1], locations[2]), (255, 0, 0), 2)
-            cv2.rectangle(frame, (locations[3]*4, locations[0]*4), (locations[1]*4, locations[2]*4), (255, 0, 0), 2)
+            cv2.rectangle(frame, (locations[3]*3, locations[0]*3), (locations[1]*3, locations[2]*3), (255, 0, 0), 2)
+            
             font                   = cv2.FONT_HERSHEY_SIMPLEX
-            bottomLeftCornerOfText = (locations[3]*4, locations[0]*4)
+            bottomLeftCornerOfText = (locations[3]*3, locations[0]*3)
             fontScale              = 1
             fontColor              = (255,255,255)
             lineType               = 2
-
             cv2.putText(frame, name, bottomLeftCornerOfText, font, fontScale, fontColor, lineType)
 
-        # cTime = time.time()
-        # fps = 1/(cTime-pTime)
-        # pTime = cTime
+        cTime = time.time()
+        fps = int(1/(cTime-pTime))
+        pTime = cTime
+        cv2.putText(frame, "Fps:" + str(fps), (10, 20), font, fontScale*0.7, (0,0,0), lineType)
 
         cv2.imshow('detecting', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
