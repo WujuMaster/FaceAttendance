@@ -6,12 +6,6 @@ from functions import save_to_db
 db_file = './FaceDatabase.csv'
 pictures = './Pictures/'
 
-# save_face(os.path.join(pictures, 'joji.jpg'), db_file, 'Joji')
-# save_face(os.path.join(pictures, 'max.jpg'), db_file, 'Maxmoefoe')
-# save_face(os.path.join(pictures, 'pinkguy.jpg'), db_file, 'Pink Guy')
-# verify_face(os.path.join(pictures, 'SalamanderMan.jpg'), db_file)
-# verify_face(os.path.join(pictures, 'iDubbbz.jpg'), db_file)
-
 menu = {}
 menu['1'] = "Create new faceID" 
 menu['2'] = "Log in with Camera"
