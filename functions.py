@@ -76,7 +76,8 @@ def cam_capture(savefile):
     pTime = 0
     while True:
         _ , frame = vid.read()
-        small_frame = cv2.resize(frame, (0, 0), fx=0.33, fy=0.33)
+        rate = 3
+        small_frame = cv2.resize(frame, (0, 0), fx=round(1/rate, 2), fy=round(1/rate, 2))
 
         norm_img = np.zeros((small_frame.shape[0], small_frame.shape[1]))
         small_frame = cv2.normalize(small_frame, norm_img, 0, 255, cv2.NORM_MINMAX)
@@ -93,9 +94,9 @@ def cam_capture(savefile):
 
         #start_point is top left, end_point is below right
         if len(locations) > 0:
-            cv2.rectangle(frame, (locations[3]*3, locations[0]*3), (locations[1]*3, locations[2]*3), (255, 0, 0), 2)
-            bottomLeftCornerOfText = (locations[3]*3, locations[0]*3)
-            cv2.putText(frame, name, bottomLeftCornerOfText, font, fontScale, fontColor, lineType)
+            cv2.rectangle(frame, (locations[3]*rate, locations[0]*rate), (locations[1]*rate, locations[2]*rate), (255, 0, 0), 2)
+
+            cv2.putText(frame, name, (locations[3]*rate, locations[0]*rate), font, fontScale, fontColor, lineType)
 
         cTime = time.time()
         fps = int(1/(cTime-pTime))
