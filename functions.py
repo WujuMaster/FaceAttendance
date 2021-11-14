@@ -5,6 +5,11 @@ import os
 import numpy as np
 import time
 
+font                   = cv2.FONT_HERSHEY_SIMPLEX
+fontScale              = 1
+fontColor              = (255,255,255)
+lineType               = 2
+
 def check_savefile(savefile):
     if not os.path.isfile(savefile):
         df = pd.DataFrame(list())
@@ -48,7 +53,6 @@ def verify_face(picpath, savefile):
 
     encoded = face_recognition.face_encodings(input)[0]
     locations = face_recognition.face_locations(input)[0]
-    # print(type(locations))
 
     df = pd.read_csv(savefile)
     features = df.iloc[:, 3].values
@@ -73,11 +77,13 @@ def cam_capture(savefile):
     while True:
         _ , frame = vid.read()
         small_frame = cv2.resize(frame, (0, 0), fx=0.33, fy=0.33)
-        # print(frame.shape)
+
+        norm_img = np.zeros((small_frame.shape[0], small_frame.shape[1]))
+        small_frame = cv2.normalize(small_frame, norm_img, 0, 255, cv2.NORM_MINMAX)
+
         rgb_small_frame = small_frame[:, :, ::-1]
         try:
             name, locations = verify_face(rgb_small_frame, savefile)
-            # name, locations = verify_face(frame, savefile)
         except:
             name = ''
             locations = ()
@@ -87,14 +93,8 @@ def cam_capture(savefile):
 
         #start_point is top left, end_point is below right
         if len(locations) > 0:
-            # cv2.rectangle(frame, (locations[3], locations[0]), (locations[1], locations[2]), (255, 0, 0), 2)
             cv2.rectangle(frame, (locations[3]*3, locations[0]*3), (locations[1]*3, locations[2]*3), (255, 0, 0), 2)
-            
-            font                   = cv2.FONT_HERSHEY_SIMPLEX
             bottomLeftCornerOfText = (locations[3]*3, locations[0]*3)
-            fontScale              = 1
-            fontColor              = (255,255,255)
-            lineType               = 2
             cv2.putText(frame, name, bottomLeftCornerOfText, font, fontScale, fontColor, lineType)
 
         cTime = time.time()
