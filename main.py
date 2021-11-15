@@ -3,7 +3,7 @@ from functions import cam_capture
 # from functions import verify_face
 from functions import save_to_db
 
-db_file = './FaceDatabase.csv'
+db_file = './facedb.pkl'
 pictures = './Pictures/'
 
 menu = {}
