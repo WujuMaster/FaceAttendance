@@ -127,7 +127,7 @@ def cam_capture(savefile):
         #start_point is top left, end_point is below right
         if len(locations) > 0:
             cv2.rectangle(frame, (x*rate, y*rate), ((x+w)*rate, (y+h)*rate), (255, 0, 0), 2)
-
+            print(w, h)
             cv2.putText(frame, name, (x*rate, y*rate), font, fontScale, fontColor, lineType)
 
         cTime = time.time()

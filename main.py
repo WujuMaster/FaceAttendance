@@ -1,6 +1,5 @@
 import os
 from functions import cam_capture
-# from functions import verify_face
 from functions import save_to_db
 
 db_file = './facedb.pkl'
