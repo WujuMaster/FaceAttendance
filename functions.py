@@ -3,11 +3,11 @@ import face_recognition
 import pickle
 import numpy as np
 import time
+from scipy.spatial import distance as dist
 
-font                   = cv2.FONT_HERSHEY_SIMPLEX
-fontScale              = 1
-fontColor              = (255,255,255)
-lineType               = 2
+font = cv2.FONT_HERSHEY_SIMPLEX
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+
 
 def save_face(picpath, savefile, name='unknown'):
     print('Saving...')
@@ -36,7 +36,6 @@ def verify_face(picpath, savefile):
         input = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
 
     encoded = face_recognition.face_encodings(input)[0]
-    # locations = face_recognition.face_locations(input)[0]
 
     names = []
     features = []
@@ -61,105 +60,85 @@ def verify_face(picpath, savefile):
                 id = names[i] 
     return id
 
-def hamming_distance(chaine1, chaine2):
-    return sum(c1 != c2 for c1, c2 in zip(chaine1, chaine2))
+def eye_aspect_ratio(eye):
+	A = dist.euclidean(eye[1], eye[5])
+	B = dist.euclidean(eye[2], eye[4])
+	C = dist.euclidean(eye[0], eye[3])
+	ear = (A + B) / (2.0 * C)
+	return ear
 
-Kernal = np.ones((3, 3), np.uint8)
-face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+EYE_AR_THRESH = 0.2
+EYE_AR_CONSEC_FRAMES = 2
 
 def cam_capture(savefile):
     vid = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     pTime = 0
-    left_eyes = []
-    right_eyes = []
+    COUNTER = 0
+    TOTAL = 0
     while True:
         _ , frame = vid.read()
         rate = 3
         small_frame = cv2.resize(frame, (0, 0), fx=round(1/rate, 2), fy=round(1/rate, 2))
-
         # Normalize image to fix brightness
         norm_img = np.zeros((small_frame.shape[0], small_frame.shape[1]))
         small_frame = cv2.normalize(small_frame, norm_img, 0, 255, cv2.NORM_MINMAX)
-
-        rgb_small_frame = small_frame[:, :, ::-1]
-
+        rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+        # rgb_small_frame = small_frame[:, :, ::-1]
         gray = cv2.cvtColor(rgb_small_frame, cv2.COLOR_RGB2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        locations = ()
 
         try:
+            faces = face_cascade.detectMultiScale(gray, 1.3, 5)
             for (x, y, w, h) in faces:
                 crop_img = rgb_small_frame[y:y+h, x:x+w].copy()
-
-                if len(left_eyes)>10:
-                    left_eyes.clear()
-                    right_eyes.clear()
-                # roi_color = rgb_small_frame[y:y+h, x:x+w]
-                roi_gray = gray[y:y+h, x:x+w]
-                roi_gray = cv2.resize(roi_gray, (100, 100))
-                face_landmarks_list = face_recognition.face_landmarks(roi_gray)[0]
-
-                start = face_landmarks_list['left_eye'][0]
-                end = face_landmarks_list['left_eye'][3]
-                width = int((end[0] - start[0])/2)
-                center = (int((start[0] + end[0])/2), int((start[1] + end[1])/2))
-                # cv2.rectangle(frame, ((x + center[0]-width)*rate, (y + center[1]-width)*rate), ((x + center[0]+width)*rate, (y + center[1]+width)*rate), (255, 0, 0), 2)
-                roi = roi_gray[center[1]-width : center[1]+width, center[0]-width : center[0]+width]
-                _, binary = cv2.threshold(roi, 60, 255, cv2.THRESH_BINARY)
-                opening = cv2.morphologyEx(binary, cv2.MORPH_OPEN, Kernal)
-                dilate_left = cv2.morphologyEx(opening, cv2.MORPH_DILATE, Kernal)
-                left_eyes.append(dilate_left.tobytes())
-
-                start = face_landmarks_list['right_eye'][0]
-                end = face_landmarks_list['right_eye'][3]
-                width = int((end[0] - start[0])/2)
-                center = (int((start[0] + end[0])/2), int((start[1] + end[1])/2))
-                # cv2.rectangle(frame, ((x + center[0]-width)*rate, (y + center[1]-width)*rate), ((x + center[0]+width)*rate, (y + center[1]+width)*rate), (255, 0, 0), 2)
-                roi = roi_gray[center[1]-width : center[1]+width, center[0]-width : center[0]+width]
-                _, binary = cv2.threshold(roi, 60, 255, cv2.THRESH_BINARY)
-                opening = cv2.morphologyEx(binary, cv2.MORPH_OPEN, Kernal)
-                dilate_right = cv2.morphologyEx(opening, cv2.MORPH_DILATE, Kernal)
-                right_eyes.append(dilate_right.tobytes())
-
+                face = frame[y*rate-10:(y+h)*rate+10, x*rate-10:(x+w)*rate+10].copy()
+                face_landmarks_list = face_recognition.face_landmarks(face)[0]
+                left_eye = face_landmarks_list['left_eye']
+                right_eye = face_landmarks_list['right_eye']
+                leftEAR = eye_aspect_ratio(left_eye)
+                rightEAR = eye_aspect_ratio(right_eye)
+                ear = (leftEAR + rightEAR) / 2.0
+                if ear < EYE_AR_THRESH:
+                    COUNTER += 1
+                    # print("eye_closed")
+                else:
+                    if COUNTER >= EYE_AR_CONSEC_FRAMES:
+                        TOTAL += 1
+                    COUNTER = 0
+                    # print("reset")
+                # cv2.putText(frame, "Blinks: {}".format(TOTAL), (10, 40),
+                #     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                
                 locations = (x, y, w, h)
             name = verify_face(crop_img, savefile)
-            left_score = 0
-            right_score = 0
-            if len(left_eyes)==10:
-                for i in range(len(left_eyes)):
-                    for j in range(i, len(left_eyes)):
-                        left_score = left_score + hamming_distance(left_eyes[i], left_eyes[j])
-                        right_score = right_score + hamming_distance(right_eyes[i], right_eyes[j])
-            
-            liveness_score = (left_score + right_score)/20
-            liveness = ''
-            if liveness_score>0:
-                print(liveness_score)
-            if liveness_score >= 50:
-                liveness = 'Real'
-            elif liveness_score > 0 and liveness_score < 50:
-                liveness = 'Fake'
+        
+            if len(name)<1:
+                name = 'unknown'
 
+            #start_point is top left, end_point is below right
+            if len(locations) > 0:
+                X, Y, W, H = x*rate, y*rate, w*rate, h*rate
+                if TOTAL > 0:
+                    color = (0, 255, 0)
+                    cv2.putText(frame, name, (X, Y-5), font, 0.75, color, 2)
+                    cv2.rectangle(frame, (X,Y), (X+W,Y+H), color, 2)
+                else:
+                    cv2.putText(frame, "Blink to detect face...", (90, 20), font, 0.5, (255,0,0), 2)
+                    
+            else:
+                TOTAL = 0
+                pass
+
+            cTime = time.time()
+            fps = int(1/(cTime-pTime))
+            pTime = cTime
+            cv2.putText(frame, "Fps:" + str(fps), (10, 20), font, 0.7, (0,0,0), 2)
+
+            cv2.imshow('detecting', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
         except:
-            name = ''
-            locations = ()
-            
-        if len(name)<1:
-            name = 'unknown'
-
-        #start_point is top left, end_point is below right
-        if len(locations) > 0:
-            cv2.rectangle(frame, (x*rate, y*rate), ((x+w)*rate, (y+h)*rate), (255, 0, 0), 2)
-            cv2.putText(frame, name, (x*rate, y*rate), font, fontScale, fontColor, lineType)
-            cv2.putText(frame, liveness, ((x+w-10)*rate, y*rate), font, fontScale, fontColor, lineType)
-
-        cTime = time.time()
-        fps = int(1/(cTime-pTime))
-        pTime = cTime
-        cv2.putText(frame, "Fps:" + str(fps), (10, 20), font, fontScale*0.7, (0,0,0), lineType)
-
-        cv2.imshow('detecting', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            pass
 
     vid.release()
     cv2.destroyAllWindows()
