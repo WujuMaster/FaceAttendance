@@ -61,42 +61,17 @@ def verify_face(picpath, savefile):
                 id = names[i] 
     return id
 
-# def cam_capture(savefile):
-#     vid = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-#     pTime = 0
-#     while True:
-#         _ , frame = vid.read()
-#         rate = 3
-#         small_frame = cv2.resize(frame, (0, 0), fx=round(1/rate, 2), fy=round(1/rate, 2))
-#         # Normalize image to fix brightness
-#         norm_img = np.zeros((small_frame.shape[0], small_frame.shape[1]))
-#         small_frame = cv2.normalize(small_frame, norm_img, 0, 255, cv2.NORM_MINMAX)
-#         rgb_small_frame = small_frame[:, :, ::-1]     
-#         try:
-#             name, locations = verify_face(rgb_small_frame, savefile)
-#         except:
-#             name = ''
-#             locations = ()          
-#         if len(name)<1:
-#             name = 'unknown'
-#         #start_point is top left, end_point is below right
-#         if len(locations) > 0:
-#             cv2.rectangle(frame, (locations[3]*rate, locations[0]*rate), (locations[1]*rate, locations[2]*rate), (255, 0, 0), 2)
-#             cv2.putText(frame, name, (locations[3]*rate, locations[0]*rate), font, fontScale, fontColor, lineType)
-#         cTime = time.time()
-#         fps = int(1/(cTime-pTime))
-#         pTime = cTime
-#         cv2.putText(frame, "Fps:" + str(fps), (10, 20), font, fontScale*0.7, (0,0,0), lineType)
-#         cv2.imshow('detecting', frame)
-#         if cv2.waitKey(1) & 0xFF == ord('q'):
-#             break
-#     vid.release()
-#     cv2.destroyAllWindows()
+def hamming_distance(chaine1, chaine2):
+    return sum(c1 != c2 for c1, c2 in zip(chaine1, chaine2))
 
+Kernal = np.ones((3, 3), np.uint8)
 face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+
 def cam_capture(savefile):
     vid = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     pTime = 0
+    left_eyes = []
+    right_eyes = []
     while True:
         _ , frame = vid.read()
         rate = 3
@@ -114,9 +89,56 @@ def cam_capture(savefile):
         try:
             for (x, y, w, h) in faces:
                 crop_img = rgb_small_frame[y:y+h, x:x+w].copy()
+
+                if len(left_eyes)>10:
+                    left_eyes.clear()
+                    right_eyes.clear()
+                # roi_color = rgb_small_frame[y:y+h, x:x+w]
+                roi_gray = gray[y:y+h, x:x+w]
+                roi_gray = cv2.resize(roi_gray, (100, 100))
+                face_landmarks_list = face_recognition.face_landmarks(roi_gray)[0]
+
+                start = face_landmarks_list['left_eye'][0]
+                end = face_landmarks_list['left_eye'][3]
+                width = int((end[0] - start[0])/2)
+                center = (int((start[0] + end[0])/2), int((start[1] + end[1])/2))
+                # cv2.rectangle(frame, ((x + center[0]-width)*rate, (y + center[1]-width)*rate), ((x + center[0]+width)*rate, (y + center[1]+width)*rate), (255, 0, 0), 2)
+                roi = roi_gray[center[1]-width : center[1]+width, center[0]-width : center[0]+width]
+                _, binary = cv2.threshold(roi, 60, 255, cv2.THRESH_BINARY)
+                opening = cv2.morphologyEx(binary, cv2.MORPH_OPEN, Kernal)
+                dilate_left = cv2.morphologyEx(opening, cv2.MORPH_DILATE, Kernal)
+                left_eyes.append(dilate_left.tobytes())
+
+                start = face_landmarks_list['right_eye'][0]
+                end = face_landmarks_list['right_eye'][3]
+                width = int((end[0] - start[0])/2)
+                center = (int((start[0] + end[0])/2), int((start[1] + end[1])/2))
+                # cv2.rectangle(frame, ((x + center[0]-width)*rate, (y + center[1]-width)*rate), ((x + center[0]+width)*rate, (y + center[1]+width)*rate), (255, 0, 0), 2)
+                roi = roi_gray[center[1]-width : center[1]+width, center[0]-width : center[0]+width]
+                _, binary = cv2.threshold(roi, 60, 255, cv2.THRESH_BINARY)
+                opening = cv2.morphologyEx(binary, cv2.MORPH_OPEN, Kernal)
+                dilate_right = cv2.morphologyEx(opening, cv2.MORPH_DILATE, Kernal)
+                right_eyes.append(dilate_right.tobytes())
+
                 locations = (x, y, w, h)
-            # name, locations = verify_face(rgb_small_frame, savefile)
             name = verify_face(crop_img, savefile)
+            left_score = 0
+            right_score = 0
+            if len(left_eyes)==10:
+                for i in range(len(left_eyes)):
+                    for j in range(i, len(left_eyes)):
+                        left_score = left_score + hamming_distance(left_eyes[i], left_eyes[j])
+                        right_score = right_score + hamming_distance(right_eyes[i], right_eyes[j])
+            
+            liveness_score = (left_score + right_score)/20
+            liveness = ''
+            if liveness_score>0:
+                print(liveness_score)
+            if liveness_score >= 50:
+                liveness = 'Real'
+            elif liveness_score > 0 and liveness_score < 50:
+                liveness = 'Fake'
+
         except:
             name = ''
             locations = ()
@@ -127,8 +149,8 @@ def cam_capture(savefile):
         #start_point is top left, end_point is below right
         if len(locations) > 0:
             cv2.rectangle(frame, (x*rate, y*rate), ((x+w)*rate, (y+h)*rate), (255, 0, 0), 2)
-            print(w, h)
             cv2.putText(frame, name, (x*rate, y*rate), font, fontScale, fontColor, lineType)
+            cv2.putText(frame, liveness, ((x+w-10)*rate, y*rate), font, fontScale, fontColor, lineType)
 
         cTime = time.time()
         fps = int(1/(cTime-pTime))
