@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 import time
 from scipy.spatial import distance as dist
+from datetime import datetime
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
@@ -52,7 +53,7 @@ def verify_face(picpath, savefile):
     id = ''
     min = 1
     for i in range(len(names)):
-        result = face_recognition.compare_faces([features[i]], encoded)
+        result = face_recognition.compare_faces([features[i]], encoded, tolerance=0.4)
         distance = face_recognition.face_distance([features[i]], encoded)
         if result[0]==True:
             if min > distance and distance<=0.5:
@@ -66,6 +67,19 @@ def eye_aspect_ratio(eye):
 	C = dist.euclidean(eye[0], eye[3])
 	ear = (A + B) / (2.0 * C)
 	return ear
+
+def markAttendance(name):
+    with open('attendance.csv', 'r+') as f:
+        myDataList = f.readlines()
+        nameList = []
+        for line in myDataList:
+            entry = line.split(',')
+            nameList.append(entry[0])
+        if name not in nameList:
+            if name != 'unknown':
+                now = datetime.now()
+                dtString = now.strftime('%d/%m/%Y %H:%M:%S')
+                f.writelines(f'\n{name}, {dtString}')
 
 EYE_AR_THRESH = 0.2
 EYE_AR_CONSEC_FRAMES = 2
@@ -86,7 +100,8 @@ def cam_capture(savefile):
         # rgb_small_frame = small_frame[:, :, ::-1]
         gray = cv2.cvtColor(rgb_small_frame, cv2.COLOR_RGB2GRAY)
         locations = ()
-
+        name = ''
+        
         try:
             faces = face_cascade.detectMultiScale(gray, 1.3, 5)
             for (x, y, w, h) in faces:
@@ -108,37 +123,39 @@ def cam_capture(savefile):
                     # print("reset")
                 # cv2.putText(frame, "Blinks: {}".format(TOTAL), (10, 40),
                 #     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                
                 locations = (x, y, w, h)
+
             name = verify_face(crop_img, savefile)
-        
+
             if len(name)<1:
                 name = 'unknown'
-
+            
             #start_point is top left, end_point is below right
             if len(locations) > 0:
+                markAttendance(name)
                 X, Y, W, H = x*rate, y*rate, w*rate, h*rate
                 if TOTAL > 0:
                     color = (0, 255, 0)
                     cv2.putText(frame, name, (X, Y-5), font, 0.75, color, 2)
                     cv2.rectangle(frame, (X,Y), (X+W,Y+H), color, 2)
                 else:
-                    cv2.putText(frame, "Blink to detect face...", (90, 20), font, 0.5, (255,0,0), 2)
-                    
+                    cv2.putText(frame, "Blink to detect face...", (90, 20), font, 0.5, (255,100,0), 2)  
             else:
                 TOTAL = 0
                 pass
 
-            cTime = time.time()
-            fps = int(1/(cTime-pTime))
-            pTime = cTime
-            cv2.putText(frame, "Fps:" + str(fps), (10, 20), font, 0.7, (0,0,0), 2)
-
-            cv2.imshow('detecting', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
         except:
             pass
+
+        cTime = time.time()
+        fps = int(1/(cTime-pTime))
+        pTime = cTime
+        cv2.putText(frame, "Fps:" + str(fps), (10, 20), font, 0.7, (0,0,0), 2)
+        
+        cv2.imshow('detecting', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        
 
     vid.release()
     cv2.destroyAllWindows()
