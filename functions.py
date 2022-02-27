@@ -84,78 +84,83 @@ def markAttendance(name):
 EYE_AR_THRESH = 0.2
 EYE_AR_CONSEC_FRAMES = 2
 
-def cam_capture(savefile):
-    vid = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+def cam_capture(url, savefile):
+    vid = cv2.VideoCapture(url, cv2.CAP_DSHOW)
     pTime = 0
     COUNTER = 0
     TOTAL = 0
     while True:
-        _ , frame = vid.read()
-        rate = 3
-        small_frame = cv2.resize(frame, (0, 0), fx=round(1/rate, 2), fy=round(1/rate, 2))
-        # Normalize image to fix brightness
-        norm_img = np.zeros((small_frame.shape[0], small_frame.shape[1]))
-        small_frame = cv2.normalize(small_frame, norm_img, 0, 255, cv2.NORM_MINMAX)
-        rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
-        # rgb_small_frame = small_frame[:, :, ::-1]
-        gray = cv2.cvtColor(rgb_small_frame, cv2.COLOR_RGB2GRAY)
-        locations = ()
-        name = ''
-        
-        try:
-            faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-            for (x, y, w, h) in faces:
-                crop_img = rgb_small_frame[y:y+h, x:x+w].copy()
-                face = frame[y*rate-10:(y+h)*rate+10, x*rate-10:(x+w)*rate+10].copy()
-                face_landmarks_list = face_recognition.face_landmarks(face)[0]
-                left_eye = face_landmarks_list['left_eye']
-                right_eye = face_landmarks_list['right_eye']
-                leftEAR = eye_aspect_ratio(left_eye)
-                rightEAR = eye_aspect_ratio(right_eye)
-                ear = (leftEAR + rightEAR) / 2.0
-                if ear < EYE_AR_THRESH:
-                    COUNTER += 1
-                    # print("eye_closed")
-                else:
-                    if COUNTER >= EYE_AR_CONSEC_FRAMES:
-                        TOTAL += 1
-                    COUNTER = 0
-                    # print("reset")
-                # cv2.putText(frame, "Blinks: {}".format(TOTAL), (10, 40),
-                #     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                locations = (x, y, w, h)
+        success , frame = vid.read()
+        if not success:
+            break
+        else:
+            rate = 3
+            small_frame = cv2.resize(frame, (0, 0), fx=round(1/rate, 2), fy=round(1/rate, 2))
+            # Normalize image to fix brightness
+            norm_img = np.zeros((small_frame.shape[0], small_frame.shape[1]))
+            small_frame = cv2.normalize(small_frame, norm_img, 0, 255, cv2.NORM_MINMAX)
+            rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+            # rgb_small_frame = small_frame[:, :, ::-1]
+            gray = cv2.cvtColor(rgb_small_frame, cv2.COLOR_RGB2GRAY)
+            locations = ()
+            name = ''
+            try:
+                faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+                for (x, y, w, h) in faces:
+                    crop_img = rgb_small_frame[y:y+h, x:x+w].copy()
+                    face = frame[y*rate-10:(y+h)*rate+10, x*rate-10:(x+w)*rate+10].copy()
+                    face_landmarks_list = face_recognition.face_landmarks(face)[0]
+                    left_eye = face_landmarks_list['left_eye']
+                    right_eye = face_landmarks_list['right_eye']
+                    leftEAR = eye_aspect_ratio(left_eye)
+                    rightEAR = eye_aspect_ratio(right_eye)
+                    ear = (leftEAR + rightEAR) / 2.0
+                    if ear < EYE_AR_THRESH:
+                        COUNTER += 1
+                        # print("eye_closed")
+                    else:
+                        if COUNTER >= EYE_AR_CONSEC_FRAMES:
+                            TOTAL += 1
+                        COUNTER = 0
+                        # print("reset")
+                    # cv2.putText(frame, "Blinks: {}".format(TOTAL), (10, 40),
+                    #     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    locations = (x, y, w, h)
 
-            name = verify_face(crop_img, savefile)
+                name = verify_face(crop_img, savefile)
 
-            if len(name)<1:
-                name = 'unknown'
-            
-            #start_point is top left, end_point is below right
-            if len(locations) > 0:
-                markAttendance(name)
-                X, Y, W, H = x*rate, y*rate, w*rate, h*rate
-                if TOTAL > 0:
-                    color = (0, 255, 0)
-                    cv2.putText(frame, name, (X, Y-5), font, 0.75, color, 2)
-                    cv2.rectangle(frame, (X,Y), (X+W,Y+H), color, 2)
+                if len(name)<1:
+                    name = 'unknown'
+                
+                #start_point is top left, end_point is below right
+                if len(locations) > 0:
+                    markAttendance(name)
+                    X, Y, W, H = x*rate, y*rate, w*rate, h*rate
+                    if TOTAL > 0:
+                        color = (0, 255, 0)
+                        cv2.putText(frame, name, (X, Y-5), font, 0.75, color, 2)
+                        cv2.rectangle(frame, (X,Y), (X+W,Y+H), color, 2)
+                    else:
+                        cv2.putText(frame, "Blink to detect face...", (90, 20), font, 0.5, (255,100,0), 2)  
                 else:
-                    cv2.putText(frame, "Blink to detect face...", (90, 20), font, 0.5, (255,100,0), 2)  
-            else:
-                TOTAL = 0
+                    TOTAL = 0
+                    pass
+
+            except:
                 pass
 
-        except:
-            pass
+            cTime = time.time()
+            fps = int(1/(cTime-pTime))
+            pTime = cTime
+            cv2.putText(frame, "Fps:" + str(fps), (10, 20), font, 0.7, (0,0,0), 2)
+            
+            # cv2.imshow('detecting', frame)
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #     break
 
-        cTime = time.time()
-        fps = int(1/(cTime-pTime))
-        pTime = cTime
-        cv2.putText(frame, "Fps:" + str(fps), (10, 20), font, 0.7, (0,0,0), 2)
-        
-        cv2.imshow('detecting', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-        
-
-    vid.release()
-    cv2.destroyAllWindows()
+            _, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    # vid.release()
+    # cv2.destroyAllWindows()

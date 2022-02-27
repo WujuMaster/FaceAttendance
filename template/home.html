@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            h1 {text-align: center;}
+            div {text-align: center;}
+        </style>
+    </head>
+    <body>
+        <div class="page-top">
+            <img class="logo" id="logo"
+            width="50"
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/OpenCV_Logo_with_text.png/487px-OpenCV_Logo_with_text.png">
+            <h1 class="title">
+                Mark Attendance with OpenCV
+            </h1>
+        </div>
+        <div class="content">
+            <div class="channel" id="channel">
+                <div class="channel_name">
+                    <a>Add new faceID</a>
+                </div>
+                <br>
+                <div class="channel_name">
+                    <a href="{{ url_for('attendance') }}">Check attendance</a>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

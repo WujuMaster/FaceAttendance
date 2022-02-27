@@ -70,7 +70,7 @@ EYE_AR_CONSEC_FRAMES = 2
 COUNTER = 0
 TOTAL = 0
 
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture('rtsp://1jfiegbquuxla:admin2020@192.168.100.11:8090/', cv2.CAP_DSHOW)
 pTime = 0
 while 1:
     ret, img = cap.read()
