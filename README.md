@@ -1,5 +1,5 @@
-# FaceRecogTerminal
-Just a small Terminal-menu project to identify faces, using face-recognition library from Python
+# Attendance System with basic Face Recognition
+Just a small Terminal-menu project to identify and recognize identity, using face-recognition library from Python (still in development)
 
 HƯỚNG DẪN SỬ DỤNG
 
