@@ -1,5 +1,5 @@
 # Attendance System with basic Face Recognition
-Just a small Terminal-menu project to identify and recognize identity, using face-recognition library from Python (still in development)
+Just a small project to identify and recognize identity, using face-recognition library from Python and Flask's GUI (still in development)
 
 HƯỚNG DẪN SỬ DỤNG
 
