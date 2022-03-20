@@ -15,5 +15,5 @@ pip install -r requirements.txt
 
 Bước 3: Chạy chương trình:
 
-python app.py
+python main.py
 
